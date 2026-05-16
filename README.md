@@ -52,7 +52,6 @@ Projeto desenvolvido para a disciplina de Estruturas de Dados, simulando um sist
 **1. Clone o repositório:**
 ```bash
 git clone https://github.com/MatheusW14/Ed-carrinho-de-compras.git
-cd nome-do-repositorio
 ```
 
 **2. Crie e ative um ambiente virtual (recomendado):**
