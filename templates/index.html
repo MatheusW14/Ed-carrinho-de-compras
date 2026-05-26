@@ -3,57 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cadastro de Produtos</title>
+    <title>Gerenciamento de Produtos - Loja IT</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f4f6f9; }
+        .card { border: none; }
+        .table-hover tbody tr:hover { background-color: #f8f9fc; }
+        /* Suaviza a transição dos botões */
+        .btn { transition: all 0.2s ease-in-out; }
+    </style>
 </head>
-<body class="bg-light">
+<body>
 
 <div class="container py-5">
-    <h2 class="text-center mb-4">Gerenciamento de Produtos (Array)</h2>
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-dark"><i class="bi bi-pc-display-horizontal text-primary me-2"></i> Loja IT - Admin</h2>
+        <p class="text-muted">Gerenciamento de Estoque via Estrutura Array</p>
+    </div>
 
-    <div class="row justify-content-center">
-        <div class="col-md-5 mb-4">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Cadastrar Produto</h5>
-                </div>
-                <div class="card-body">
+    <div class="row justify-content-center g-4">
+        <div class="col-md-4">
+            <div class="card shadow-lg rounded-4">
+                <div class="card-body p-4">
+                    <h5 class="card-title fw-bold mb-4 border-bottom pb-2">
+                        <i class="bi bi-box-seam me-2 text-primary"></i>Novo Produto
+                    </h5>
+                    
                     <form id="form-produto">
-                        <div class="mb-3">
-                            <label for="nome" class="form-label">Nome do Produto</label>
-                            <input type="text" class="form-control" id="nome" required>
+                        <div class="form-floating mb-3">
+                            <input type="text" class="form-control" id="nome" placeholder="Nome do Produto" required>
+                            <label for="nome">Nome do Produto</label>
                         </div>
-                        <div class="mb-3">
-                            <label for="preco" class="form-label">Preço (R$)</label>
-                            <input type="number" class="form-control" id="preco" step="0.01" required>
+                        <div class="form-floating mb-3">
+                            <input type="number" class="form-control" id="preco" placeholder="Preço (R$)" step="0.01" required>
+                            <label for="preco">Preço (R$)</label>
                         </div>
-                        <div class="mb-4">
-                            <label for="quantidade" class="form-label">Quantidade em Estoque</label>
-                            <input type="number" class="form-control" id="quantidade" required>
+                        <div class="form-floating mb-4">
+                            <input type="number" class="form-control" id="quantidade" placeholder="Quantidade" required>
+                            <label for="quantidade">Estoque Inicial</label>
                         </div>
-                        <button type="submit" class="btn btn-success w-100">Cadastrar no Array</button>
+                        
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm">
+                            <i class="bi bi-plus-circle me-1"></i> Cadastrar no Array
+                        </button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-7">
-            <div class="card shadow-sm">
-                <div class="card-header bg-dark text-white">
-                    <h5 class="card-title mb-0">Produtos Cadastrados</h5>
-                </div>
-                <div class="card-body">
+        <div class="col-md-8">
+            <div class="card shadow-lg rounded-4 h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+                        <h5 class="card-title fw-bold mb-0">
+                            <i class="bi bi-list-ul me-2 text-primary"></i>Catálogo
+                        </h5>
+                        
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="text-muted small me-1">Ordenar:</span>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="ordenarProdutos('nome')" title="Ordenar por Nome (Bubble Sort)">
+                                <i class="bi bi-sort-alpha-down"></i> Nome
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="ordenarProdutos('preco')" title="Ordenar por Preço (Bubble Sort)">
+                                <i class="bi bi-sort-numeric-down"></i> Preço
+                            </button>
+                            <span class="badge bg-light text-dark border ms-2" id="contador-produtos">0 itens</span>
+                        </div>
+                    </div>
+                    
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light text-secondary">
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Nome</th>
-                                    <th>Preço</th>
-                                    <th>Estoque</th>
+                                    <th scope="col" class="fw-semibold">ID</th>
+                                    <th scope="col" class="fw-semibold">Produto</th>
+                                    <th scope="col" class="fw-semibold">Preço</th>
+                                    <th scope="col" class="fw-semibold">Estoque</th>
+                                    <th scope="col" class="fw-semibold text-center">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabela-produtos">
+                            <tbody id="tabela-produtos" class="border-top-0">
                                 </tbody>
                         </table>
                     </div>
@@ -64,43 +97,98 @@
 </div>
 
 <script>
-    // Quando a página carregar, busca os itens que já estão no Array do backend
-    document.addEventListener('DOMContentLoaded', carregarProdutos);
+    document.addEventListener('DOMContentLoaded', () => carregarProdutos());
 
-    // Função para buscar os produtos no backend (GET /produtos)
+    // Função que carrega a lista normal
     async function carregarProdutos() {
         try {
             const resposta = await fetch('/produtos');
             const produtos = await resposta.json();
-            
-            const tbody = document.getElementById('tabela-produtos');
-            tbody.innerHTML = ''; // Limpa a tabela antes de preencher
-
-            if (produtos.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum produto cadastrado no Array ainda.</td></tr>';
-                return;
-            }
-
-            // Preenche a tabela com os dados vindos do Array em Python
-            produtos.forEach(p => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td>${p.id}</td>
-                        <td>${p.nome}</td>
-                        <td>R$ ${p.preco.toFixed(2)}</td>
-                        <td>${p.quantidade}</td>
-                    </tr>
-                `;
-            });
+            renderizarTabela(produtos);
         } catch (erro) {
             console.error("Erro ao carregar produtos:", erro);
         }
     }
 
-    // Função para enviar os dados do formulário para o backend (POST /produtos)
-    document.getElementById('form-produto').addEventListener('submit', async (e) => {
-        e.preventDefault(); // Impede a página de recarregar
+    // NOVA FUNÇÃO: Ordenar Produtos (aciona o Bubble Sort no backend)
+    async function ordenarProdutos(criterio) {
+        try {
+            // Chama a rota /produtos/ordenar?por=nome ou preco
+            const resposta = await fetch(`/produtos/ordenar?por=${criterio}`);
+            const produtosOrdenados = await resposta.json();
+            renderizarTabela(produtosOrdenados);
+        } catch (erro) {
+            console.error("Erro ao ordenar:", erro);
+        }
+    }
+
+    // Função auxiliar para desenhar a tabela na tela
+    function renderizarTabela(produtos) {
+        const tbody = document.getElementById('tabela-produtos');
+        const contador = document.getElementById('contador-produtos');
         
+        tbody.innerHTML = ''; 
+        contador.innerText = `${produtos.length} item(ns)`;
+
+        if (produtos.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        Nenhum produto cadastrado no momento.
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        produtos.forEach(p => {
+            const corBadge = p.quantidade <= 3 ? 'bg-danger' : 'bg-success';
+            
+            // Adicionado o botão de excluir na última coluna (<td>)
+            tbody.innerHTML += `
+                <tr>
+                    <td><span class="text-muted fw-bold">#${p.id}</span></td>
+                    <td class="fw-semibold">${p.nome}</td>
+                    <td class="text-primary fw-bold">R$ ${p.preco.toFixed(2)}</td>
+                    <td><span class="badge ${corBadge} rounded-pill px-3">${p.quantidade} un.</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(${p.id})" title="Remover Produto">
+                            <i class="bi bi-trash3"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    // NOVA FUNÇÃO: Remover Produto (aciona Array.remover() no backend)
+    async function removerProduto(id) {
+        if(confirm(`Tem certeza que deseja remover o produto #${id} do Array?`)) {
+            try {
+                const resposta = await fetch(`/produtos/${id}`, { method: 'DELETE' });
+                
+                if (resposta.ok) {
+                    carregarProdutos(); // Atualiza a tabela após remover
+                } else {
+                    const erro = await resposta.json();
+                    alert(erro.erro || "Erro ao remover.");
+                }
+            } catch (erro) {
+                console.error("Erro ao remover:", erro);
+            }
+        }
+    }
+
+    // Cadastro de produto (mantido igual)
+    document.getElementById('form-produto').addEventListener('submit', async (e) => {
+        e.preventDefault(); 
+        
+        const btnSubmit = e.target.querySelector('button');
+        const conteudoOriginalBtn = btnSubmit.innerHTML;
+        
+        btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Cadastrando...';
+        btnSubmit.disabled = true;
+
         const produto = {
             nome: document.getElementById('nome').value,
             preco: parseFloat(document.getElementById('preco').value),
@@ -110,20 +198,21 @@
         try {
             const resposta = await fetch('/produtos', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(produto)
             });
 
             if (resposta.ok) {
-                document.getElementById('form-produto').reset(); // Limpa os campos
-                carregarProdutos(); // Atualiza a tabela com o novo item do Array
+                document.getElementById('form-produto').reset(); 
+                carregarProdutos(); 
             } else {
                 alert("Erro ao cadastrar o produto.");
             }
         } catch (erro) {
             console.error("Erro ao cadastrar:", erro);
+        } finally {
+            btnSubmit.innerHTML = conteudoOriginalBtn;
+            btnSubmit.disabled = false;
         }
     });
 </script>
