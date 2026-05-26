@@ -9,7 +9,7 @@ app = Flask(__name__)
 produtos = Array()
 carrinho = Array()
 
-proximo_id = 1
+proximo_id = {"value": 1}
 
 
 @app.route("/")
@@ -27,18 +27,17 @@ def listar_produtos():
 
 @app.route("/produtos", methods=["POST"])
 def cadastrar_produto():
-    global proximo_id
     dados = request.get_json()
 
     produto = {
-        "id": proximo_id,
+        "id": proximo_id["value"],
         "nome": dados["nome"],
         "preco": float(dados["preco"]),
         "quantidade": int(dados["quantidade"]),
     }
 
     produtos.inserir(produto)
-    proximo_id += 1
+    proximo_id["value"] += 1
 
     return jsonify(produto), 201
 
