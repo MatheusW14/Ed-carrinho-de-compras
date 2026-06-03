@@ -3,93 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciamento de Produtos - Loja IT</title>
-    
+    <title>Loja IT - Carrinho de Compras</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f4f6f9; }
         .card { border: none; }
-        .table-hover tbody tr:hover { background-color: #f8f9fc; }
-        /* Suaviza a transição dos botões */
         .btn { transition: all 0.2s ease-in-out; }
+        .nav-tabs .nav-link { color: #6c757d; font-weight: 600; }
+        .nav-tabs .nav-link.active { color: #0d6efd; }
+        .historico-card { border-left: 4px solid #0d6efd; }
     </style>
 </head>
 <body>
 
-<div class="container py-5">
-    <div class="text-center mb-5">
-        <h2 class="fw-bold text-dark"><i class="bi bi-pc-display-horizontal text-primary me-2"></i> Loja IT - Admin</h2>
-        <p class="text-muted">Gerenciamento de Estoque via Estrutura Array</p>
+<div class="container py-4">
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-dark"><i class="bi bi-pc-display-horizontal text-primary me-2"></i>Loja IT</h2>
+        <p class="text-muted">Carrinho de Compras — Estruturas de Dados</p>
     </div>
 
-    <div class="row justify-content-center g-4">
-        <div class="col-md-4">
-            <div class="card shadow-lg rounded-4">
-                <div class="card-body p-4">
-                    <h5 class="card-title fw-bold mb-4 border-bottom pb-2">
-                        <i class="bi bi-box-seam me-2 text-primary"></i>Novo Produto
-                    </h5>
-                    
-                    <form id="form-produto">
-                        <div class="form-floating mb-3">
-                            <input type="text" class="form-control" id="nome" placeholder="Nome do Produto" required>
-                            <label for="nome">Nome do Produto</label>
+    <ul class="nav nav-tabs mb-4" id="abas">
+        <li class="nav-item">
+            <a class="nav-link active" href="#" onclick="mostrarAba('produtos', event)">
+                <i class="bi bi-box-seam me-1"></i>Produtos
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" onclick="mostrarAba('carrinho', event)">
+                <i class="bi bi-cart3 me-1"></i>Carrinho
+                <span class="badge bg-primary ms-1" id="badge-carrinho">0</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" href="#" onclick="mostrarAba('historico', event)">
+                <i class="bi bi-clock-history me-1"></i>Histórico
+            </a>
+        </li>
+    </ul>
+
+    <!-- ABA PRODUTOS -->
+    <div id="aba-produtos">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-4 border-bottom pb-2">
+                            <i class="bi bi-plus-circle me-2 text-primary"></i>Novo Produto
+                        </h5>
+                        <form id="form-produto">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="nome" placeholder="Nome" required>
+                                <label for="nome">Nome do Produto</label>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <input type="number" class="form-control" id="preco" placeholder="Preço" step="0.01" min="0" required>
+                                <label for="preco">Preço (R$)</label>
+                            </div>
+                            <div class="form-floating mb-4">
+                                <input type="number" class="form-control" id="quantidade" placeholder="Quantidade" min="0" required>
+                                <label for="quantidade">Estoque Inicial</label>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold rounded-3">
+                                <i class="bi bi-plus-circle me-1"></i>Cadastrar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                            <h5 class="fw-bold mb-0"><i class="bi bi-list-ul me-2 text-primary"></i>Catálogo</h5>
+                            <div class="d-flex gap-2 align-items-center">
+                                <span class="text-muted small">Ordenar:</span>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="ordenarProdutos('nome')">
+                                    <i class="bi bi-sort-alpha-down"></i> Nome
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="ordenarProdutos('preco')">
+                                    <i class="bi bi-sort-numeric-down"></i> Preço
+                                </button>
+                                <span class="badge bg-light text-dark border ms-1" id="contador-produtos">0 itens</span>
+                            </div>
                         </div>
-                        <div class="form-floating mb-3">
-                            <input type="number" class="form-control" id="preco" placeholder="Preço (R$)" step="0.01" required>
-                            <label for="preco">Preço (R$)</label>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light text-secondary">
+                                    <tr>
+                                        <th>ID</th><th>Produto</th><th>Preço</th><th>Estoque</th><th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-produtos"></tbody>
+                            </table>
                         </div>
-                        <div class="form-floating mb-4">
-                            <input type="number" class="form-control" id="quantidade" placeholder="Quantidade" required>
-                            <label for="quantidade">Estoque Inicial</label>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold rounded-3 shadow-sm">
-                            <i class="bi bi-plus-circle me-1"></i> Cadastrar no Array
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <div class="col-md-8">
-            <div class="card shadow-lg rounded-4 h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
-                        <h5 class="card-title fw-bold mb-0">
-                            <i class="bi bi-list-ul me-2 text-primary"></i>Catálogo
+    <!-- ABA CARRINHO -->
+    <div id="aba-carrinho" style="display:none;">
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-4 border-bottom pb-2">
+                            <i class="bi bi-cart-plus me-2 text-primary"></i>Adicionar ao Carrinho
                         </h5>
-                        
-                        <div class="d-flex gap-2 align-items-center">
-                            <span class="text-muted small me-1">Ordenar:</span>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="ordenarProdutos('nome')" title="Ordenar por Nome (Bubble Sort)">
-                                <i class="bi bi-sort-alpha-down"></i> Nome
+                        <form id="form-carrinho">
+                            <div class="form-floating mb-3">
+                                <select class="form-select" id="select-produto" required>
+                                    <option value="">Selecione...</option>
+                                </select>
+                                <label for="select-produto">Produto</label>
+                            </div>
+                            <div class="form-floating mb-4">
+                                <input type="number" class="form-control" id="qtd-carrinho" placeholder="Qtd" min="1" value="1" required>
+                                <label for="qtd-carrinho">Quantidade</label>
+                            </div>
+                            <button type="submit" class="btn btn-success w-100 py-2 fw-bold rounded-3 mb-2">
+                                <i class="bi bi-cart-plus me-1"></i>Adicionar
                             </button>
-                            <button class="btn btn-sm btn-outline-secondary" onclick="ordenarProdutos('preco')" title="Ordenar por Preço (Bubble Sort)">
-                                <i class="bi bi-sort-numeric-down"></i> Preço
+                            <button type="button" class="btn btn-outline-warning w-100 py-2 fw-bold rounded-3" onclick="desfazer()">
+                                <i class="bi bi-arrow-counterclockwise me-1"></i>Desfazer (Pilha)
                             </button>
-                            <span class="badge bg-light text-dark border ms-2" id="contador-produtos">0 itens</span>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-8">
+                <div class="card shadow-sm rounded-4">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-3 border-bottom pb-2">
+                            <i class="bi bi-cart3 me-2 text-primary"></i>Itens no Carrinho
+                        </h5>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light text-secondary">
+                                    <tr>
+                                        <th>Produto</th><th>Preço Unit.</th><th>Qtd</th><th>Subtotal</th><th class="text-center">Remover</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-carrinho"></tbody>
+                            </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                            <h5 class="fw-bold mb-0">Total: <span id="total-carrinho" class="text-primary">R$ 0,00</span></h5>
+                            <button class="btn btn-primary fw-bold px-4" onclick="finalizarCompra()">
+                                <i class="bi bi-bag-check me-1"></i>Finalizar Compra
+                            </button>
                         </div>
                     </div>
-                    
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light text-secondary">
-                                <tr>
-                                    <th scope="col" class="fw-semibold">ID</th>
-                                    <th scope="col" class="fw-semibold">Produto</th>
-                                    <th scope="col" class="fw-semibold">Preço</th>
-                                    <th scope="col" class="fw-semibold">Estoque</th>
-                                    <th scope="col" class="fw-semibold text-center">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tabela-produtos" class="border-top-0">
-                                </tbody>
-                        </table>
-                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ABA HISTÓRICO -->
+    <div id="aba-historico" style="display:none;">
+        <div class="card shadow-sm rounded-4">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-4 border-bottom pb-2">
+                    <i class="bi bi-clock-history me-2 text-primary"></i>Histórico de Compras
+                    <small class="text-muted fw-normal fs-6 ms-2">(Lista Encadeada)</small>
+                </h5>
+                <div id="lista-historico">
+                    <p class="text-muted text-center py-4">Nenhuma compra realizada ainda.</p>
                 </div>
             </div>
         </div>
@@ -97,125 +181,215 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', () => carregarProdutos());
+function mostrarAba(aba, event) {
+    event.preventDefault();
+    ['produtos','carrinho','historico'].forEach(a => {
+        document.getElementById(`aba-${a}`).style.display = 'none';
+    });
+    document.getElementById(`aba-${aba}`).style.display = 'block';
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    event.target.classList.add('active');
 
-    // Função que carrega a lista normal
-    async function carregarProdutos() {
-        try {
-            const resposta = await fetch('/produtos');
-            const produtos = await resposta.json();
-            renderizarTabela(produtos);
-        } catch (erro) {
-            console.error("Erro ao carregar produtos:", erro);
-        }
+    if (aba === 'carrinho') { carregarCarrinho(); carregarSelectProdutos(); }
+    if (aba === 'historico') { carregarHistorico(); }
+}
+
+document.addEventListener('DOMContentLoaded', () => carregarProdutos());
+
+async function carregarProdutos() {
+    const res = await fetch('/produtos');
+    renderizarTabela(await res.json());
+}
+
+async function ordenarProdutos(criterio) {
+    const res = await fetch(`/produtos/ordenar?por=${criterio}`);
+    renderizarTabela(await res.json());
+}
+
+function renderizarTabela(produtos) {
+    const tbody = document.getElementById('tabela-produtos');
+    document.getElementById('contador-produtos').innerText = `${produtos.length} item(ns)`;
+
+    if (produtos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-muted">
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum produto cadastrado.</td></tr>`;
+        return;
     }
 
-    // NOVA FUNÇÃO: Ordenar Produtos (aciona o Bubble Sort no backend)
-    async function ordenarProdutos(criterio) {
-        try {
-            // Chama a rota /produtos/ordenar?por=nome ou preco
-            const resposta = await fetch(`/produtos/ordenar?por=${criterio}`);
-            const produtosOrdenados = await resposta.json();
-            renderizarTabela(produtosOrdenados);
-        } catch (erro) {
-            console.error("Erro ao ordenar:", erro);
-        }
-    }
+    tbody.innerHTML = produtos.map(p => `
+        <tr>
+            <td><span class="text-muted fw-bold">#${p.id}</span></td>
+            <td class="fw-semibold">${p.nome}</td>
+            <td class="text-primary fw-bold">R$ ${p.preco.toFixed(2)}</td>
+            <td><span class="badge ${p.quantidade <= 3 ? 'bg-danger' : 'bg-success'} rounded-pill px-3">${p.quantidade} un.</span></td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-success me-1" onclick="adicionarRapido(${p.id})" title="Adicionar ao carrinho">
+                    <i class="bi bi-cart-plus"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(${p.id})">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>`).join('');
+}
 
-    // Função auxiliar para desenhar a tabela na tela
-    function renderizarTabela(produtos) {
-        const tbody = document.getElementById('tabela-produtos');
-        const contador = document.getElementById('contador-produtos');
-        
-        tbody.innerHTML = ''; 
-        contador.innerText = `${produtos.length} item(ns)`;
+async function adicionarRapido(id) {
+    const res = await fetch('/produtos');
+    const produtos = await res.json();
+    const p = produtos.find(x => x.id === id);
+    if (!p || p.quantidade === 0) return alert('Produto sem estoque!');
+    await fetch('/carrinho/adicionar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ produto_id: id, quantidade: 1 })
+    });
+    atualizarBadgeCarrinho();
+    alert(`"${p.nome}" adicionado ao carrinho!`);
+}
 
-        if (produtos.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="5" class="text-center py-5 text-muted">
-                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
-                        Nenhum produto cadastrado no momento.
-                    </td>
-                </tr>`;
-            return;
-        }
+async function removerProduto(id) {
+    if (!confirm(`Remover produto #${id}?`)) return;
+    await fetch(`/produtos/${id}`, { method: 'DELETE' });
+    carregarProdutos();
+}
 
-        produtos.forEach(p => {
-            const corBadge = p.quantidade <= 3 ? 'bg-danger' : 'bg-success';
-            
-            // Adicionado o botão de excluir na última coluna (<td>)
-            tbody.innerHTML += `
-                <tr>
-                    <td><span class="text-muted fw-bold">#${p.id}</span></td>
-                    <td class="fw-semibold">${p.nome}</td>
-                    <td class="text-primary fw-bold">R$ ${p.preco.toFixed(2)}</td>
-                    <td><span class="badge ${corBadge} rounded-pill px-3">${p.quantidade} un.</span></td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(${p.id})" title="Remover Produto">
-                            <i class="bi bi-trash3"></i>
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-    }
+document.getElementById('form-produto').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cadastrando...';
 
-    // NOVA FUNÇÃO: Remover Produto (aciona Array.remover() no backend)
-    async function removerProduto(id) {
-        if(confirm(`Tem certeza que deseja remover o produto #${id} do Array?`)) {
-            try {
-                const resposta = await fetch(`/produtos/${id}`, { method: 'DELETE' });
-                
-                if (resposta.ok) {
-                    carregarProdutos(); // Atualiza a tabela após remover
-                } else {
-                    const erro = await resposta.json();
-                    alert(erro.erro || "Erro ao remover.");
-                }
-            } catch (erro) {
-                console.error("Erro ao remover:", erro);
-            }
-        }
-    }
-
-    // Cadastro de produto (mantido igual)
-    document.getElementById('form-produto').addEventListener('submit', async (e) => {
-        e.preventDefault(); 
-        
-        const btnSubmit = e.target.querySelector('button');
-        const conteudoOriginalBtn = btnSubmit.innerHTML;
-        
-        btnSubmit.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Cadastrando...';
-        btnSubmit.disabled = true;
-
-        const produto = {
+    await fetch('/produtos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
             nome: document.getElementById('nome').value,
             preco: parseFloat(document.getElementById('preco').value),
             quantidade: parseInt(document.getElementById('quantidade').value)
-        };
-
-        try {
-            const resposta = await fetch('/produtos', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(produto)
-            });
-
-            if (resposta.ok) {
-                document.getElementById('form-produto').reset(); 
-                carregarProdutos(); 
-            } else {
-                alert("Erro ao cadastrar o produto.");
-            }
-        } catch (erro) {
-            console.error("Erro ao cadastrar:", erro);
-        } finally {
-            btnSubmit.innerHTML = conteudoOriginalBtn;
-            btnSubmit.disabled = false;
-        }
+        })
     });
+
+    e.target.reset();
+    carregarProdutos();
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Cadastrar';
+});
+
+async function carregarSelectProdutos() {
+    const res = await fetch('/produtos');
+    const produtos = await res.json();
+    const sel = document.getElementById('select-produto');
+    sel.innerHTML = '<option value="">Selecione...</option>' +
+        produtos.filter(p => p.quantidade > 0)
+                .map(p => `<option value="${p.id}">${p.nome} — R$ ${p.preco.toFixed(2)}</option>`).join('');
+}
+
+async function carregarCarrinho() {
+    const res = await fetch('/carrinho');
+    const dados = await res.json();
+    const tbody = document.getElementById('tabela-carrinho');
+    document.getElementById('total-carrinho').innerText = `R$ ${dados.total.toFixed(2).replace('.', ',')}`;
+    document.getElementById('badge-carrinho').innerText = dados.itens.length;
+
+    if (dados.itens.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">
+            <i class="bi bi-cart-x fs-2 d-block mb-1"></i>Carrinho vazio.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = dados.itens.map(item => `
+        <tr>
+            <td class="fw-semibold">${item.nome}</td>
+            <td>R$ ${item.preco.toFixed(2)}</td>
+            <td>${item.quantidade_carrinho}</td>
+            <td class="text-primary fw-bold">R$ ${(item.preco * item.quantidade_carrinho).toFixed(2)}</td>
+            <td class="text-center">
+                <button class="btn btn-sm btn-outline-danger" onclick="removerDoCarrinho(${item.produto_id})">
+                    <i class="bi bi-trash3"></i>
+                </button>
+            </td>
+        </tr>`).join('');
+}
+
+document.getElementById('form-carrinho').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const produto_id = parseInt(document.getElementById('select-produto').value);
+    const quantidade = parseInt(document.getElementById('qtd-carrinho').value);
+    if (!produto_id) return alert('Selecione um produto.');
+
+    const res = await fetch('/carrinho/adicionar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ produto_id, quantidade })
+    });
+    const dados = await res.json();
+    if (!res.ok) return alert(dados.erro);
+    carregarCarrinho();
+});
+
+async function removerDoCarrinho(produto_id) {
+    await fetch(`/carrinho/remover/${produto_id}`, { method: 'DELETE' });
+    carregarCarrinho();
+}
+
+async function desfazer() {
+    const res = await fetch('/carrinho/desfazer', { method: 'POST' });
+    const dados = await res.json();
+    alert(dados.mensagem);
+    carregarCarrinho();
+    carregarProdutos();
+}
+
+async function finalizarCompra() {
+    if (!confirm('Confirmar compra?')) return;
+    const res = await fetch('/compra/finalizar', { method: 'POST' });
+    const dados = await res.json();
+    if (!res.ok) return alert(dados.erro);
+    alert(`✅ ${dados.mensagem}\nTotal: R$ ${dados.compra.total.toFixed(2)}`);
+    carregarCarrinho();
+    carregarProdutos();
+}
+
+async function atualizarBadgeCarrinho() {
+    const res = await fetch('/carrinho');
+    const dados = await res.json();
+    document.getElementById('badge-carrinho').innerText = dados.itens.length;
+}
+
+async function carregarHistorico() {
+    const res = await fetch('/historico');
+    const compras = await res.json();
+    const div = document.getElementById('lista-historico');
+
+    if (compras.length === 0) {
+        div.innerHTML = '<p class="text-muted text-center py-4">Nenhuma compra realizada ainda.</p>';
+        return;
+    }
+
+    div.innerHTML = compras.map((c, i) => `
+        <div class="card mb-3 historico-card shadow-sm">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold"><i class="bi bi-bag-check me-2 text-primary"></i>Compra #${compras.length - i}</span>
+                    <span class="text-muted small"><i class="bi bi-clock me-1"></i>${c.data}</span>
+                </div>
+                <table class="table table-sm mb-2">
+                    <thead><tr><th>Produto</th><th>Qtd</th><th>Subtotal</th></tr></thead>
+                    <tbody>
+                        ${c.itens.map(item => `
+                            <tr>
+                                <td>${item.nome}</td>
+                                <td>${item.quantidade_carrinho}</td>
+                                <td>R$ ${(item.preco * item.quantidade_carrinho).toFixed(2)}</td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+                <div class="text-end fw-bold text-primary">Total: R$ ${c.total.toFixed(2)}</div>
+            </div>
+        </div>`).join('');
+}
 </script>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

@@ -1,13 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from datetime import datetime
 from estruturas.array import Array
-from flask import render_template
+from estruturas.pilha import Pilha
+from estruturas.lista_encadeada import ListaEncadeada
 
 app = Flask(__name__)
 
-# Estruturas de dados
 produtos = Array()
 carrinho = Array()
+pilha_undo = Pilha()
+historico = ListaEncadeada()
 
 proximo_id = {"value": 1}
 
@@ -19,7 +21,6 @@ def index():
 
 # ─── PRODUTOS ────────────────────────────────────────────
 
-
 @app.route("/produtos", methods=["GET"])
 def listar_produtos():
     return jsonify(produtos.listar())
@@ -28,17 +29,14 @@ def listar_produtos():
 @app.route("/produtos", methods=["POST"])
 def cadastrar_produto():
     dados = request.get_json()
-
     produto = {
         "id": proximo_id["value"],
         "nome": dados["nome"],
         "preco": float(dados["preco"]),
         "quantidade": int(dados["quantidade"]),
     }
-
     produtos.inserir(produto)
     proximo_id["value"] += 1
-
     return jsonify(produto), 201
 
 
@@ -55,8 +53,7 @@ def remover_produto(produto_id):
 @app.route("/produtos/buscar", methods=["GET"])
 def buscar_produto():
     nome = request.args.get("nome", "")
-    resultado = produtos.buscar_por_nome(nome)
-    return jsonify(resultado)
+    return jsonify(produtos.buscar_por_nome(nome))
 
 
 @app.route("/produtos/ordenar", methods=["GET"])
@@ -69,17 +66,7 @@ def ordenar_produtos():
     return jsonify(produtos.listar())
 
 
-@app.route("/produtos/codigo/<int:codigo>", methods=["GET"])
-def buscar_por_codigo(codigo):
-    lista = produtos.listar()
-    for p in lista:
-        if p["id"] == codigo:
-            return jsonify(p)
-    return jsonify({"erro": "Produto não encontrado"}), 404
-
-
 # ─── CARRINHO ────────────────────────────────────────────
-
 
 @app.route("/carrinho", methods=["GET"])
 def ver_carrinho():
@@ -94,7 +81,6 @@ def adicionar_ao_carrinho():
     produto_id = dados["produto_id"]
     quantidade = int(dados["quantidade"])
 
-    # Busca o produto no Array
     produto = None
     for p in produtos.listar():
         if p["id"] == produto_id:
@@ -103,9 +89,15 @@ def adicionar_ao_carrinho():
 
     if not produto:
         return jsonify({"erro": "Produto não encontrado"}), 404
-
     if produto["quantidade"] < quantidade:
         return jsonify({"erro": "Quantidade insuficiente em estoque"}), 400
+
+    itens = carrinho.listar()
+    for item in itens:
+        if item["produto_id"] == produto_id:
+            item["quantidade_carrinho"] += quantidade
+            pilha_undo.empilhar({"acao": "adicionar", "produto_id": produto_id, "quantidade": quantidade})
+            return jsonify(item), 200
 
     item = {
         "produto_id": produto_id,
@@ -113,9 +105,8 @@ def adicionar_ao_carrinho():
         "preco": produto["preco"],
         "quantidade_carrinho": quantidade,
     }
-
     carrinho.inserir(item)
-
+    pilha_undo.empilhar({"acao": "adicionar", "produto_id": produto_id, "quantidade": quantidade})
     return jsonify(item), 201
 
 
@@ -124,14 +115,34 @@ def remover_do_carrinho(produto_id):
     itens = carrinho.listar()
     for i, item in enumerate(itens):
         if item["produto_id"] == produto_id:
-            carrinho.remover(i)
-            # Referência à pilha removida daqui
+            removido = carrinho.remover(i)
+            pilha_undo.empilhar({"acao": "remover", "item": removido})
             return jsonify({"mensagem": "Item removido do carrinho"})
     return jsonify({"erro": "Item não encontrado no carrinho"}), 404
 
 
-# ─── COMPRA ──────────────────────────────────────────────
+@app.route("/carrinho/desfazer", methods=["POST"])
+def desfazer():
+    acao = pilha_undo.desempilhar()
+    if not acao:
+        return jsonify({"mensagem": "Nada para desfazer"})
 
+    if acao["acao"] == "adicionar":
+        itens = carrinho.listar()
+        for i, item in enumerate(itens):
+            if item["produto_id"] == acao["produto_id"]:
+                item["quantidade_carrinho"] -= acao["quantidade"]
+                if item["quantidade_carrinho"] <= 0:
+                    carrinho.remover(i)
+                break
+        return jsonify({"mensagem": "Adição desfeita"})
+
+    if acao["acao"] == "remover":
+        carrinho.inserir(acao["item"])
+        return jsonify({"mensagem": "Remoção desfeita"})
+
+
+# ─── COMPRA ──────────────────────────────────────────────
 
 @app.route("/compra/finalizar", methods=["POST"])
 def finalizar_compra():
@@ -141,7 +152,6 @@ def finalizar_compra():
 
     total = sum(i["preco"] * i["quantidade_carrinho"] for i in itens)
 
-    # Atualiza estoque no Array
     todos_produtos = produtos.listar()
     for item in itens:
         for p in todos_produtos:
@@ -150,15 +160,22 @@ def finalizar_compra():
 
     compra = {
         "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
-        "itens": itens,
+        "itens": list(itens),
         "total": round(total, 2),
     }
+    historico.inserir(compra)
 
-    # Limpa o carrinho
     for _ in range(carrinho.tamanho()):
         carrinho.remover(0)
+    while not pilha_undo.esta_vazia():
+        pilha_undo.desempilhar()
 
     return jsonify({"mensagem": "Compra finalizada!", "compra": compra})
+
+
+@app.route("/historico", methods=["GET"])
+def ver_historico():
+    return jsonify(historico.listar())
 
 
 if __name__ == "__main__":
