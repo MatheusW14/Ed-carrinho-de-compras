@@ -14,6 +14,9 @@ historico = ListaEncadeada()
 proximo_id = {"value": 1}
 
 
+# ─── PÁGINA PRINCIPAL ────────────────────────────────────
+
+
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -21,19 +24,48 @@ def index():
 
 # ─── PRODUTOS ────────────────────────────────────────────
 
+
 @app.route("/produtos", methods=["GET"])
 def listar_produtos():
-    return jsonify(produtos.listar())
+    busca = request.args.get("busca", "").strip()
+    ordenar = request.args.get("ordenar", "").strip()
+
+    if busca:
+        resultado = produtos.buscar_por_nome(busca)
+    else:
+        resultado = produtos.listar()
+
+    if ordenar == "preco":
+        resultado = sorted(resultado, key=lambda p: p["preco"])
+    elif ordenar == "nome":
+        resultado = sorted(resultado, key=lambda p: p["nome"].lower())
+
+    return jsonify(resultado)
 
 
 @app.route("/produtos", methods=["POST"])
 def cadastrar_produto():
-    dados = request.get_json()
+    dados = request.get_json(silent=True)
+
+    if not dados:
+        return jsonify({"erro": "Corpo da requisição inválido"}), 400
+
+    nome = str(dados.get("nome", "")).strip()
+    preco = dados.get("preco")
+    quantidade = dados.get("quantidade")
+
+    if not nome:
+        return jsonify({"erro": "Nome do produto é obrigatório"}), 400
+    if preco is None or float(preco) < 0:
+        return jsonify({"erro": "Preço inválido"}), 400
+    if quantidade is None or int(quantidade) < 0:
+        return jsonify({"erro": "Quantidade inválida"}), 400
+
     produto = {
         "id": proximo_id["value"],
-        "nome": dados["nome"],
-        "preco": float(dados["preco"]),
-        "quantidade": int(dados["quantidade"]),
+        "nome": nome,
+        "preco": round(float(preco), 2),
+        "quantidade": int(quantidade),
     }
     produtos.inserir(produto)
     proximo_id["value"] += 1
@@ -50,23 +82,8 @@ def remover_produto(produto_id):
     return jsonify({"erro": "Produto não encontrado"}), 404
 
 
-@app.route("/produtos/buscar", methods=["GET"])
-def buscar_produto():
-    nome = request.args.get("nome", "")
-    return jsonify(produtos.buscar_por_nome(nome))
-
-
-@app.route("/produtos/ordenar", methods=["GET"])
-def ordenar_produtos():
-    criterio = request.args.get("por", "nome")
-    if criterio == "preco":
-        produtos.ordenar_por_preco()
-    else:
-        produtos.ordenar_por_nome()
-    return jsonify(produtos.listar())
-
-
 # ─── CARRINHO ────────────────────────────────────────────
+
 
 @app.route("/carrinho", methods=["GET"])
 def ver_carrinho():
@@ -75,29 +92,44 @@ def ver_carrinho():
     return jsonify({"itens": itens, "total": round(total, 2)})
 
 
-@app.route("/carrinho/adicionar", methods=["POST"])
+@app.route("/carrinho", methods=["POST"])
 def adicionar_ao_carrinho():
-    dados = request.get_json()
-    produto_id = dados["produto_id"]
-    quantidade = int(dados["quantidade"])
+    dados = request.get_json(silent=True)
 
-    produto = None
-    for p in produtos.listar():
-        if p["id"] == produto_id:
-            produto = p
-            break
+    if not dados:
+        return jsonify({"erro": "Corpo da requisição inválido"}), 400
+
+    produto_id = dados.get("produto_id")
+    quantidade = dados.get("quantidade", 1)
+
+    if not produto_id:
+        return jsonify({"erro": "produto_id é obrigatório"}), 400
+    if int(quantidade) <= 0:
+        return jsonify({"erro": "Quantidade deve ser maior que zero"}), 400
+
+    quantidade = int(quantidade)
+    produto = produtos.buscar_por_id("id", produto_id)
 
     if not produto:
         return jsonify({"erro": "Produto não encontrado"}), 404
     if produto["quantidade"] < quantidade:
-        return jsonify({"erro": "Quantidade insuficiente em estoque"}), 400
+        return (
+            jsonify(
+                {"erro": f"Estoque insuficiente. Disponível: {produto['quantidade']}"}
+            ),
+            400,
+        )
 
-    itens = carrinho.listar()
-    for item in itens:
-        if item["produto_id"] == produto_id:
-            item["quantidade_carrinho"] += quantidade
-            pilha_undo.empilhar({"acao": "adicionar", "produto_id": produto_id, "quantidade": quantidade})
-            return jsonify(item), 200
+    # Reserva o estoque imediatamente ao adicionar no carrinho
+    produto["quantidade"] -= quantidade
+
+    item_carrinho = carrinho.buscar_por_id("produto_id", produto_id)
+    if item_carrinho:
+        item_carrinho["quantidade_carrinho"] += quantidade
+        pilha_undo.empilhar(
+            {"acao": "adicionar", "produto_id": produto_id, "quantidade": quantidade}
+        )
+        return jsonify(item_carrinho), 200
 
     item = {
         "produto_id": produto_id,
@@ -106,16 +138,22 @@ def adicionar_ao_carrinho():
         "quantidade_carrinho": quantidade,
     }
     carrinho.inserir(item)
-    pilha_undo.empilhar({"acao": "adicionar", "produto_id": produto_id, "quantidade": quantidade})
+    pilha_undo.empilhar(
+        {"acao": "adicionar", "produto_id": produto_id, "quantidade": quantidade}
+    )
     return jsonify(item), 201
 
 
-@app.route("/carrinho/remover/<int:produto_id>", methods=["DELETE"])
+@app.route("/carrinho/<int:produto_id>", methods=["DELETE"])
 def remover_do_carrinho(produto_id):
     itens = carrinho.listar()
     for i, item in enumerate(itens):
         if item["produto_id"] == produto_id:
             removido = carrinho.remover(i)
+            # Devolve a quantidade ao estoque ao remover do carrinho
+            produto = produtos.buscar_por_id("id", produto_id)
+            if produto:
+                produto["quantidade"] += removido["quantidade_carrinho"]
             pilha_undo.empilhar({"acao": "remover", "item": removido})
             return jsonify({"mensagem": "Item removido do carrinho"})
     return jsonify({"erro": "Item não encontrado no carrinho"}), 404
@@ -128,21 +166,30 @@ def desfazer():
         return jsonify({"mensagem": "Nada para desfazer"})
 
     if acao["acao"] == "adicionar":
-        itens = carrinho.listar()
-        for i, item in enumerate(itens):
-            if item["produto_id"] == acao["produto_id"]:
-                item["quantidade_carrinho"] -= acao["quantidade"]
-                if item["quantidade_carrinho"] <= 0:
-                    carrinho.remover(i)
-                break
+        # Desfaz adição: remove do carrinho e devolve ao estoque
+        item_carrinho = carrinho.buscar_por_id("produto_id", acao["produto_id"])
+        if item_carrinho:
+            item_carrinho["quantidade_carrinho"] -= acao["quantidade"]
+            produto = produtos.buscar_por_id("id", acao["produto_id"])
+            if produto:
+                produto["quantidade"] += acao["quantidade"]
+            if item_carrinho["quantidade_carrinho"] <= 0:
+                idx = carrinho.listar().index(item_carrinho)
+                carrinho.remover(idx)
         return jsonify({"mensagem": "Adição desfeita"})
 
     if acao["acao"] == "remover":
-        carrinho.inserir(acao["item"])
+        # Desfaz remoção: volta o item pro carrinho e reserva o estoque novamente
+        item = acao["item"]
+        produto = produtos.buscar_por_id("id", item["produto_id"])
+        if produto:
+            produto["quantidade"] -= item["quantidade_carrinho"]
+        carrinho.inserir(item)
         return jsonify({"mensagem": "Remoção desfeita"})
 
 
 # ─── COMPRA ──────────────────────────────────────────────
+
 
 @app.route("/compra/finalizar", methods=["POST"])
 def finalizar_compra():
@@ -152,12 +199,8 @@ def finalizar_compra():
 
     total = sum(i["preco"] * i["quantidade_carrinho"] for i in itens)
 
-    todos_produtos = produtos.listar()
-    for item in itens:
-        for p in todos_produtos:
-            if p["id"] == item["produto_id"]:
-                p["quantidade"] -= item["quantidade_carrinho"]
-
+    # Estoque já foi decrementado ao adicionar no carrinho,
+    # então só precisa limpar o carrinho e registrar o histórico
     compra = {
         "data": datetime.now().strftime("%d/%m/%Y %H:%M"),
         "itens": list(itens),
@@ -171,6 +214,9 @@ def finalizar_compra():
         pilha_undo.desempilhar()
 
     return jsonify({"mensagem": "Compra finalizada!", "compra": compra})
+
+
+# ─── HISTÓRICO ───────────────────────────────────────────
 
 
 @app.route("/historico", methods=["GET"])

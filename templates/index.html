@@ -14,9 +14,14 @@
         .nav-tabs .nav-link { color: #6c757d; font-weight: 600; }
         .nav-tabs .nav-link.active { color: #0d6efd; }
         .historico-card { border-left: 4px solid #0d6efd; }
+        #toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999; display: flex; flex-direction: column; gap: 0.5rem; }
+        .toast { min-width: 280px; }
     </style>
 </head>
 <body>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
 
 <div class="container py-4">
     <div class="text-center mb-4">
@@ -78,7 +83,7 @@
                     <div class="card-body p-4">
                         <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
                             <h5 class="fw-bold mb-0"><i class="bi bi-list-ul me-2 text-primary"></i>Catálogo</h5>
-                            <div class="d-flex gap-2 align-items-center">
+                            <div class="d-flex gap-2 align-items-center flex-wrap">
                                 <span class="text-muted small">Ordenar:</span>
                                 <button class="btn btn-sm btn-outline-secondary" onclick="ordenarProdutos('nome')">
                                     <i class="bi bi-sort-alpha-down"></i> Nome
@@ -88,6 +93,13 @@
                                 </button>
                                 <span class="badge bg-light text-dark border ms-1" id="contador-produtos">0 itens</span>
                             </div>
+                        </div>
+                        <div class="input-group mb-3">
+                            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" class="form-control" id="campo-busca" placeholder="Buscar produto por nome..." oninput="buscarProduto(this.value)">
+                            <button class="btn btn-outline-secondary" type="button" onclick="limparBusca()">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-hover align-middle">
@@ -154,7 +166,7 @@
                         </div>
                         <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
                             <h5 class="fw-bold mb-0">Total: <span id="total-carrinho" class="text-primary">R$ 0,00</span></h5>
-                            <button class="btn btn-primary fw-bold px-4" onclick="finalizarCompra()">
+                            <button class="btn btn-primary fw-bold px-4" onclick="confirmarCompra()">
                                 <i class="bi bi-bag-check me-1"></i>Finalizar Compra
                             </button>
                         </div>
@@ -180,7 +192,47 @@
     </div>
 </div>
 
+<!-- Modal Confirmação de Compra -->
+<div class="modal fade" id="modalConfirmarCompra" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="bi bi-bag-check text-primary me-2"></i>Confirmar Compra</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-1">Você está prestes a finalizar a compra.</p>
+                <p class="fw-bold fs-5 mb-0">Total: <span id="modal-total" class="text-primary"></span></p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="finalizarCompra()">
+                    <i class="bi bi-check-circle me-1"></i>Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+// ─── TOAST ───────────────────────────────────────────────
+function mostrarToast(mensagem, tipo = 'success') {
+    const icones = { success: 'check-circle-fill', danger: 'x-circle-fill', warning: 'exclamation-triangle-fill', info: 'info-circle-fill' };
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-bg-${tipo} border-0 show`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body fw-semibold">
+                <i class="bi bi-${icones[tipo] || 'info-circle-fill'} me-2"></i>${mensagem}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" onclick="this.closest('.toast').remove()"></button>
+        </div>`;
+    document.getElementById('toast-container').appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+}
+
+// ─── ABAS ────────────────────────────────────────────────
 function mostrarAba(aba, event) {
     event.preventDefault();
     ['produtos','carrinho','historico'].forEach(a => {
@@ -196,14 +248,31 @@ function mostrarAba(aba, event) {
 
 document.addEventListener('DOMContentLoaded', () => carregarProdutos());
 
+// ─── PRODUTOS ────────────────────────────────────────────
+let ordenacaoAtual = '';
+
 async function carregarProdutos() {
-    const res = await fetch('/produtos');
+    const busca = document.getElementById('campo-busca')?.value || '';
+    const params = new URLSearchParams();
+    if (busca.trim()) params.set('busca', busca.trim());
+    if (ordenacaoAtual) params.set('ordenar', ordenacaoAtual);
+    const res = await fetch(`/produtos?${params}`);
     renderizarTabela(await res.json());
 }
 
 async function ordenarProdutos(criterio) {
-    const res = await fetch(`/produtos/ordenar?por=${criterio}`);
-    renderizarTabela(await res.json());
+    ordenacaoAtual = criterio;
+    carregarProdutos();
+}
+
+async function buscarProduto(nome) {
+    carregarProdutos();
+}
+
+function limparBusca() {
+    document.getElementById('campo-busca').value = '';
+    ordenacaoAtual = '';
+    carregarProdutos();
 }
 
 function renderizarTabela(produtos) {
@@ -212,44 +281,55 @@ function renderizarTabela(produtos) {
 
     if (produtos.length === 0) {
         tbody.innerHTML = `<tr><td colspan="5" class="text-center py-5 text-muted">
-            <i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum produto cadastrado.</td></tr>`;
+            <i class="bi bi-inbox fs-1 d-block mb-2"></i>Nenhum produto encontrado.</td></tr>`;
         return;
     }
 
-    tbody.innerHTML = produtos.map(p => `
-        <tr>
+    tbody.innerHTML = produtos.map(p => {
+        const semEstoque = p.quantidade === 0;
+        const badgeEstoque = semEstoque
+            ? `<span class="badge bg-danger rounded-pill px-3">Esgotado</span>`
+            : p.quantidade <= 3
+                ? `<span class="badge bg-warning text-dark rounded-pill px-3">${p.quantidade} un.</span>`
+                : `<span class="badge bg-success rounded-pill px-3">${p.quantidade} un.</span>`;
+
+        return `<tr class="${semEstoque ? 'text-muted' : ''}">
             <td><span class="text-muted fw-bold">#${p.id}</span></td>
             <td class="fw-semibold">${p.nome}</td>
             <td class="text-primary fw-bold">R$ ${p.preco.toFixed(2)}</td>
-            <td><span class="badge ${p.quantidade <= 3 ? 'bg-danger' : 'bg-success'} rounded-pill px-3">${p.quantidade} un.</span></td>
+            <td>${badgeEstoque}</td>
             <td class="text-center">
-                <button class="btn btn-sm btn-outline-success me-1" onclick="adicionarRapido(${p.id})" title="Adicionar ao carrinho">
+                <button class="btn btn-sm btn-outline-success me-1" onclick="adicionarRapido(${p.id})"
+                    title="Adicionar ao carrinho" ${semEstoque ? 'disabled' : ''}>
                     <i class="bi bi-cart-plus"></i>
                 </button>
                 <button class="btn btn-sm btn-outline-danger" onclick="removerProduto(${p.id})">
                     <i class="bi bi-trash3"></i>
                 </button>
             </td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
 }
 
 async function adicionarRapido(id) {
-    const res = await fetch('/produtos');
-    const produtos = await res.json();
-    const p = produtos.find(x => x.id === id);
-    if (!p || p.quantidade === 0) return alert('Produto sem estoque!');
-    await fetch('/carrinho/adicionar', {
+    const res = await fetch(`/carrinho`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ produto_id: id, quantidade: 1 })
     });
+    const dados = await res.json();
+    if (!res.ok) { mostrarToast(dados.erro, 'danger'); return; }
+    mostrarToast(`"${dados.nome}" adicionado ao carrinho!`, 'success');
     atualizarBadgeCarrinho();
-    alert(`"${p.nome}" adicionado ao carrinho!`);
+    carregarProdutos();
 }
 
 async function removerProduto(id) {
-    if (!confirm(`Remover produto #${id}?`)) return;
+    const produtos = await (await fetch('/produtos')).json();
+    const p = produtos.find(x => x.id === id);
+    if (!confirm(`Remover "${p?.nome || 'produto'}" do catálogo?`)) return;
     await fetch(`/produtos/${id}`, { method: 'DELETE' });
+    mostrarToast('Produto removido do catálogo.', 'warning');
     carregarProdutos();
 }
 
@@ -259,7 +339,7 @@ document.getElementById('form-produto').addEventListener('submit', async (e) => 
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Cadastrando...';
 
-    await fetch('/produtos', {
+    const res = await fetch('/produtos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -269,12 +349,20 @@ document.getElementById('form-produto').addEventListener('submit', async (e) => 
         })
     });
 
-    e.target.reset();
-    carregarProdutos();
+    const dados = await res.json();
+    if (!res.ok) {
+        mostrarToast(dados.erro, 'danger');
+    } else {
+        mostrarToast(`"${dados.nome}" cadastrado com sucesso!`, 'success');
+        e.target.reset();
+        carregarProdutos();
+    }
+
     btn.disabled = false;
     btn.innerHTML = '<i class="bi bi-plus-circle me-1"></i>Cadastrar';
 });
 
+// ─── CARRINHO ────────────────────────────────────────────
 async function carregarSelectProdutos() {
     const res = await fetch('/produtos');
     const produtos = await res.json();
@@ -315,37 +403,45 @@ document.getElementById('form-carrinho').addEventListener('submit', async (e) =>
     e.preventDefault();
     const produto_id = parseInt(document.getElementById('select-produto').value);
     const quantidade = parseInt(document.getElementById('qtd-carrinho').value);
-    if (!produto_id) return alert('Selecione um produto.');
+    if (!produto_id) { mostrarToast('Selecione um produto.', 'warning'); return; }
 
-    const res = await fetch('/carrinho/adicionar', {
+    const res = await fetch('/carrinho', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ produto_id, quantidade })
     });
     const dados = await res.json();
-    if (!res.ok) return alert(dados.erro);
+    if (!res.ok) { mostrarToast(dados.erro, 'danger'); return; }
+    mostrarToast(`"${dados.nome}" adicionado ao carrinho!`, 'success');
     carregarCarrinho();
 });
 
 async function removerDoCarrinho(produto_id) {
-    await fetch(`/carrinho/remover/${produto_id}`, { method: 'DELETE' });
+    await fetch(`/carrinho/${produto_id}`, { method: 'DELETE' });
+    mostrarToast('Item removido do carrinho.', 'warning');
     carregarCarrinho();
 }
 
 async function desfazer() {
     const res = await fetch('/carrinho/desfazer', { method: 'POST' });
     const dados = await res.json();
-    alert(dados.mensagem);
+    mostrarToast(dados.mensagem, 'info');
     carregarCarrinho();
     carregarProdutos();
 }
 
+function confirmarCompra() {
+    const total = document.getElementById('total-carrinho').innerText;
+    document.getElementById('modal-total').innerText = total;
+    new bootstrap.Modal(document.getElementById('modalConfirmarCompra')).show();
+}
+
 async function finalizarCompra() {
-    if (!confirm('Confirmar compra?')) return;
+    bootstrap.Modal.getInstance(document.getElementById('modalConfirmarCompra')).hide();
     const res = await fetch('/compra/finalizar', { method: 'POST' });
     const dados = await res.json();
-    if (!res.ok) return alert(dados.erro);
-    alert(`✅ ${dados.mensagem}\nTotal: R$ ${dados.compra.total.toFixed(2)}`);
+    if (!res.ok) { mostrarToast(dados.erro, 'danger'); return; }
+    mostrarToast(`Compra finalizada! Total: R$ ${dados.compra.total.toFixed(2)}`, 'success');
     carregarCarrinho();
     carregarProdutos();
 }
@@ -356,6 +452,7 @@ async function atualizarBadgeCarrinho() {
     document.getElementById('badge-carrinho').innerText = dados.itens.length;
 }
 
+// ─── HISTÓRICO ───────────────────────────────────────────
 async function carregarHistorico() {
     const res = await fetch('/historico');
     const compras = await res.json();
